@@ -51,7 +51,8 @@ type mstats struct {
 	// application pauses in the runtime.
 	//
 	// Each individual pause is counted separately, unlike pause_ns.
-	gcPauseDist timeHistogram
+	gcPauseDist     timeHistogram
+	malloc_total_ns uint64
 }
 
 var memstats mstats
@@ -562,7 +563,7 @@ func readGCStats(pauses *[]uint64) {
 func readGCStats_m(pauses *[]uint64) {
 	p := *pauses
 	// Calling code in runtime/debug should make the slice large enough.
-	if cap(p) < len(memstats.pause_ns)+3 {
+	if cap(p) < len(memstats.pause_ns)+4 {
 		throw("short slice passed to readGCStats")
 	}
 
@@ -588,8 +589,9 @@ func readGCStats_m(pauses *[]uint64) {
 	p[n+n] = memstats.last_gc_unix
 	p[n+n+1] = uint64(memstats.numgc)
 	p[n+n+2] = memstats.pause_total_ns
+	p[n+n+3] = memstats.malloc_total_ns
 	unlock(&mheap_.lock)
-	*pauses = p[:n+n+3]
+	*pauses = p[:n+n+4]
 }
 
 // flushmcache flushes the mcache of allp[i].
