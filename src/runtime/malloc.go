@@ -589,7 +589,7 @@ func mallocgc(size uintptr, typ *_type, needzero bool) unsafe.Pointer {
 
 	defer func(start int64) {
 		d := nanotime() - start
-		memstats.malloc_total_ns += d
+		memstats.malloc_total_ns += uint64(d)
 		// atomic.AddUint64(&memstats.malloc_total_ns, uint64(d))
 	}(nanotime())
 
