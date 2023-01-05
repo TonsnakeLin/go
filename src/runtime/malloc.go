@@ -82,6 +82,7 @@ package runtime
 
 import (
 	"runtime/internal/sys"
+	"sync/atomic"
 	"unsafe"
 )
 
@@ -587,6 +588,11 @@ func mallocgc(size uintptr, typ *_type, needzero bool) unsafe.Pointer {
 		return unsafe.Pointer(&zerobase)
 	}
 
+	defer func(start int64) {
+		d := nanotime() - start
+		atomic.AddUint64(&memstats.malloc_total_ns, uint64(d))
+	}(nanotime())
+
 	if debug.sbrk != 0 {
 		align := uintptr(16)
 		if typ != nil {
@@ -946,6 +952,7 @@ func persistentalloc(size, align uintptr, sysStat *uint64) unsafe.Pointer {
 
 // Must run on system stack because stack growth can (re)invoke it.
 // See issue 9174.
+//
 //go:systemstack
 func persistentalloc1(size, align uintptr, sysStat *uint64) unsafe.Pointer {
 	const (

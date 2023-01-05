@@ -151,6 +151,8 @@ type mstats struct {
 	// unlike heap_live, heap_marked does not change until the
 	// next mark termination.
 	heap_marked uint64
+
+	malloc_total_ns uint64
 }
 
 var memstats mstats
@@ -487,7 +489,7 @@ func readGCStats(pauses *[]uint64) {
 func readGCStats_m(pauses *[]uint64) {
 	p := *pauses
 	// Calling code in runtime/debug should make the slice large enough.
-	if cap(p) < len(memstats.pause_ns)+3 {
+	if cap(p) < len(memstats.pause_ns)+4 {
 		throw("short slice passed to readGCStats")
 	}
 
@@ -513,8 +515,9 @@ func readGCStats_m(pauses *[]uint64) {
 	p[n+n] = memstats.last_gc_unix
 	p[n+n+1] = uint64(memstats.numgc)
 	p[n+n+2] = memstats.pause_total_ns
+	p[n+n+3] = atomic.Load64(&memstats.malloc_total_ns)
 	unlock(&mheap_.lock)
-	*pauses = p[:n+n+3]
+	*pauses = p[:n+n+4]
 }
 
 //go:nowritebarrier
@@ -664,6 +667,7 @@ func purgecachedstats(c *mcache) {
 //
 // A side-effect of using xadduintptr() is that we need to check for
 // overflow errors.
+//
 //go:nosplit
 func mSysStatInc(sysStat *uint64, n uintptr) {
 	if sys.BigEndian != 0 {
@@ -678,6 +682,7 @@ func mSysStatInc(sysStat *uint64, n uintptr) {
 
 // Atomically decreases a given *system* memory stat. Same comments as
 // mSysStatInc apply.
+//
 //go:nosplit
 func mSysStatDec(sysStat *uint64, n uintptr) {
 	if sys.BigEndian != 0 {
