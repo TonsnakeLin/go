@@ -587,18 +587,16 @@ func mallocgc(size uintptr, typ *_type, needzero bool) unsafe.Pointer {
 		return unsafe.Pointer(&zerobase)
 	}
 
-	defer func(start int64) {
-		d := nanotime() - start
-		memstats.malloc_total_ns += uint64(d)
-		// atomic.AddUint64(&memstats.malloc_total_ns, uint64(d))
-	}(nanotime())
+	start := nanotime()
 
 	if debug.sbrk != 0 {
 		align := uintptr(16)
 		if typ != nil {
 			align = uintptr(typ.align)
 		}
-		return persistentalloc(size, align, &memstats.other_sys)
+		o := persistentalloc(size, align, &memstats.other_sys)
+		memstats.malloc_total_ns += uint64(nanotime() - start)
+		return o
 	}
 
 	// assistG is the G to charge for this allocation, or nil if
@@ -684,6 +682,7 @@ func mallocgc(size uintptr, typ *_type, needzero bool) unsafe.Pointer {
 				c.local_tinyallocs++
 				mp.mallocing = 0
 				releasem(mp)
+				memstats.malloc_total_ns += uint64(nanotime() - start)
 				return x
 			}
 			// Allocate a new maxTinySize block.
@@ -810,7 +809,7 @@ func mallocgc(size uintptr, typ *_type, needzero bool) unsafe.Pointer {
 			gcStart(gcBackgroundMode, t)
 		}
 	}
-
+	memstats.malloc_total_ns += uint64(nanotime() - start)
 	return x
 }
 
