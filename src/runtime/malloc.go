@@ -82,7 +82,6 @@ package runtime
 
 import (
 	"runtime/internal/sys"
-	"sync/atomic"
 	"unsafe"
 )
 
@@ -590,7 +589,8 @@ func mallocgc(size uintptr, typ *_type, needzero bool) unsafe.Pointer {
 
 	defer func(start int64) {
 		d := nanotime() - start
-		atomic.AddUint64(&memstats.malloc_total_ns, uint64(d))
+		memstats.malloc_total_ns += d
+		// atomic.AddUint64(&memstats.malloc_total_ns, uint64(d))
 	}(nanotime())
 
 	if debug.sbrk != 0 {
