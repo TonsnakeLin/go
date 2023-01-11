@@ -811,7 +811,7 @@ top:
 		// result in a deadlock as we attempt to preempt a worker that's
 		// trying to preempt us (e.g. for a stack scan).
 		casgstatus(gp, _Grunning, _Gwaiting)
-		forEachP(func(_p_ *p) {
+		forEachP(traceProcStopByGCMarkDone, func(_p_ *p) {
 			// Flush the write barrier buffer, since this may add
 			// work to the gcWork.
 			wbBufFlush1(_p_)
@@ -1075,7 +1075,7 @@ func gcMarkTermination() {
 	// is necessary to sweep all spans, we need to ensure all
 	// mcaches are flushed before we start the next GC cycle.
 	systemstack(func() {
-		forEachP(func(_p_ *p) {
+		forEachP(traceProcStopByGCMarkTermination, func(_p_ *p) {
 			_p_.mcache.prepareForSweep()
 		})
 	})

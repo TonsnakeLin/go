@@ -1198,7 +1198,7 @@ func stopTheWorldWithSema() {
 		if s == _Psyscall && atomic.Cas(&p.status, s, _Pgcstop) {
 			if trace.enabled {
 				traceGoSysBlock(p)
-				traceProcStop(p)
+				traceProcStop(p, traceProcStopByStopTheWorldWithSema)
 			}
 			p.syscalltick++
 			sched.stopwait--
@@ -1484,7 +1484,7 @@ func mexit(osStack bool) {
 		//
 		// We could try to clean up this M more before wedging
 		// it, but that complicates signal handling.
-		handoffp(releasep())
+		handoffp(releasep(traceProcStopByRelease_ExitM))
 		lock(&sched.lock)
 		sched.nmfreed++
 		checkdead()
@@ -1533,7 +1533,7 @@ found:
 	atomic.Xadd64(&ncgocall, int64(m.ncgocall))
 
 	// Release the P.
-	handoffp(releasep())
+	handoffp(releasep(traceProcStopByRelease_ExitM))
 	// After this point we must not have write barriers.
 
 	// Invoke the deadlock detector. This must happen after
@@ -1583,7 +1583,7 @@ found:
 // The caller must hold worldsema.
 //
 //go:systemstack
-func forEachP(fn func(*p)) {
+func forEachP(stopReason uint64, fn func(*p)) {
 	mp := acquirem()
 	_p_ := getg().m.p.ptr()
 
@@ -1628,7 +1628,7 @@ func forEachP(fn func(*p)) {
 		if s == _Psyscall && p.runSafePointFn == 1 && atomic.Cas(&p.status, s, _Pidle) {
 			if trace.enabled {
 				traceGoSysBlock(p)
-				traceProcStop(p)
+				traceProcStop(p, stopReason)
 			}
 			p.syscalltick++
 			handoffp(p)
@@ -1770,7 +1770,7 @@ func allocm(_p_ *p, fn func(), id int64) *m {
 	mp.g0.m = mp
 
 	if _p_ == _g_.m.p.ptr() {
-		releasep()
+		releasep(traceProcStopByRelease_AllocM)
 	}
 
 	releasem(_g_.m)
@@ -2440,7 +2440,7 @@ func stoplockedm() {
 	}
 	if _g_.m.p != 0 {
 		// Schedule another M to run this p.
-		_p_ := releasep()
+		_p_ := releasep(traceProcStopByRelease_StopLockedM)
 		handoffp(_p_)
 	}
 	incidlelocked(1)
@@ -2472,7 +2472,7 @@ func startlockedm(gp *g) {
 	}
 	// directly handoff current P to the locked m
 	incidlelocked(-1)
-	_p_ := releasep()
+	_p_ := releasep(traceProcStopByRelease_StartLockedM)
 	mp.nextp.set(_p_)
 	notewakeup(&mp.park)
 	stopm()
@@ -2494,7 +2494,7 @@ func gcstopm() {
 			throw("gcstopm: negative nmspinning")
 		}
 	}
-	_p_ := releasep()
+	_p_ := releasep(traceProcStopByRelease_GCStopM)
 	lock(&sched.lock)
 	_p_.status = _Pgcstop
 	sched.stopwait--
@@ -2739,7 +2739,7 @@ top:
 		unlock(&sched.lock)
 		return gp, false, false
 	}
-	if releasep() != _p_ {
+	if releasep(traceProcStopByRelease_FindRunnable) != _p_ {
 		throw("findrunnable: wrong p")
 	}
 	now = pidleput(_p_, now)
@@ -3696,7 +3696,7 @@ func entersyscall_gcwait() {
 	if sched.stopwait > 0 && atomic.Cas(&_p_.status, _Psyscall, _Pgcstop) {
 		if trace.enabled {
 			traceGoSysBlock(_p_)
-			traceProcStop(_p_)
+			traceProcStop(_p_, traceProcStopByGCWait)
 		}
 		_p_.syscalltick++
 		if sched.stopwait--; sched.stopwait == 0 {
@@ -3755,7 +3755,7 @@ func entersyscallblock_handoff() {
 		traceGoSysCall()
 		traceGoSysBlock(getg().m.p.ptr())
 	}
-	handoffp(releasep())
+	handoffp(releasep(traceProcStopByRelease_SyscallBlock))
 }
 
 // The goroutine g exited its system call.
@@ -4877,7 +4877,7 @@ func procresize(nprocs int32) *p {
 				// and then scheduled again to keep
 				// the trace sane.
 				traceGoSched()
-				traceProcStop(_g_.m.p.ptr())
+				traceProcStop(_g_.m.p.ptr(), traceProcStopByProcResize)
 			}
 			_g_.m.p.ptr().m = 0
 		}
@@ -4982,7 +4982,7 @@ func wirep(_p_ *p) {
 }
 
 // Disassociate p and the current m.
-func releasep() *p {
+func releasep(reason uint64) *p {
 	_g_ := getg()
 
 	if _g_.m.p == 0 {
@@ -4994,7 +4994,7 @@ func releasep() *p {
 		throw("releasep: invalid p state")
 	}
 	if trace.enabled {
-		traceProcStop(_g_.m.p.ptr())
+		traceProcStop(_g_.m.p.ptr(), reason)
 	}
 	_g_.m.p = 0
 	_p_.m = 0
@@ -5343,7 +5343,7 @@ func retake(now int64) uint32 {
 			if atomic.Cas(&_p_.status, s, _Pidle) {
 				if trace.enabled {
 					traceGoSysBlock(_p_)
-					traceProcStop(_p_)
+					traceProcStop(_p_, traceProcStopByRetake)
 				}
 				n++
 				_p_.syscalltick++

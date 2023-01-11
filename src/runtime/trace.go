@@ -27,7 +27,7 @@ const (
 	traceEvStack             = 3  // stack [stack id, number of PCs, array of {PC, func string ID, file string ID, line}]
 	traceEvGomaxprocs        = 4  // current value of GOMAXPROCS [timestamp, GOMAXPROCS, stack id]
 	traceEvProcStart         = 5  // start of P [timestamp, thread id]
-	traceEvProcStop          = 6  // stop of P [timestamp]
+	traceEvProcStop          = 6  // stop of P [timestamp, reason]
 	traceEvGCStart           = 7  // GC start [timestamp, seq, stack id]
 	traceEvGCDone            = 8  // GC done [timestamp]
 	traceEvGCSTWStart        = 9  // GC STW start [timestamp, kind]
@@ -1172,13 +1172,30 @@ func traceProcStart() {
 	traceEvent(traceEvProcStart, -1, uint64(getg().m.id))
 }
 
-func traceProcStop(pp *p) {
+const (
+	traceProcStopByUnknown uint64 = iota
+	traceProcStopByStopTheWorldWithSema
+	traceProcStopByGCMarkDone
+	traceProcStopByGCMarkTermination
+	traceProcStopByGCWait
+	traceProcStopByProcResize
+	traceProcStopByRelease_AllocM
+	traceProcStopByRelease_StopLockedM
+	traceProcStopByRelease_StartLockedM
+	traceProcStopByRelease_GCStopM
+	traceProcStopByRelease_ExitM
+	traceProcStopByRelease_FindRunnable
+	traceProcStopByRelease_SyscallBlock
+	traceProcStopByRetake
+)
+
+func traceProcStop(pp *p, reason uint64) {
 	// Sysmon and stopTheWorld can stop Ps blocked in syscalls,
 	// to handle this we temporary employ the P.
 	mp := acquirem()
 	oldp := mp.p
 	mp.p.set(pp)
-	traceEvent(traceEvProcStop, -1)
+	traceEvent(traceEvProcStop, -1, reason)
 	mp.p = oldp
 	releasem(mp)
 }
