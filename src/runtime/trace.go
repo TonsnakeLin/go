@@ -1178,7 +1178,7 @@ func traceProcStop(pp *p) {
 	mp := acquirem()
 	oldp := mp.p
 	mp.p.set(pp)
-	traceEvent(traceEvProcStop, -1, reason)
+	traceEvent(traceEvProcStop, -1)
 	mp.p = oldp
 	releasem(mp)
 }
