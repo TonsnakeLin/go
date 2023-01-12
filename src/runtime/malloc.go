@@ -855,7 +855,6 @@ func mallocgc(size uintptr, typ *_type, needzero bool) unsafe.Pointer {
 		// underflows.
 		size += computeRZlog(size)
 	}
-	start := nanotime()
 
 	if debug.malloc {
 		if debug.sbrk != 0 {
@@ -878,9 +877,7 @@ func mallocgc(size uintptr, typ *_type, needzero bool) unsafe.Pointer {
 					align = 1
 				}
 			}
-			o := persistentalloc(size, align, &memstats.other_sys)
-			memstats.malloc_total_ns += uint64(nanotime() - start)
-			return o
+			return persistentalloc(size, align, &memstats.other_sys)
 		}
 
 		if inittrace.active && inittrace.id == getg().goid {
@@ -987,7 +984,6 @@ func mallocgc(size uintptr, typ *_type, needzero bool) unsafe.Pointer {
 				c.tinyAllocs++
 				mp.mallocing = 0
 				releasem(mp)
-				memstats.malloc_total_ns += uint64(nanotime() - start)
 				return x
 			}
 			// Allocate a new maxTinySize block.
@@ -1168,7 +1164,6 @@ func mallocgc(size uintptr, typ *_type, needzero bool) unsafe.Pointer {
 		// Maybe just all noscan objects?
 		x = add(x, size-dataSize)
 	}
-	memstats.malloc_total_ns += uint64(nanotime() - start)
 	return x
 }
 

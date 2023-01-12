@@ -1056,53 +1056,6 @@ func (ctx *traceContext) emitInstant(ev *trace.Event, name, category string) {
 			ThreadID uint64
 		}
 		arg = &Arg{ev.Args[0]}
-	} else if ev.Type == trace.EvProcStop {
-		type Arg struct {
-			Reason string
-		}
-		const (
-			byStopTheWorldWithSema uint64 = iota + 1
-			byGCMarkDone
-			byGCMarkTermination
-			byGCWait
-			byProcResize
-			byRelease_AllocM
-			byRelease_StopLockedM
-			byRelease_StartLockedM
-			byRelease_GCStopM
-			byRelease_ExitM
-			byRelease_FindRunnable
-			byRelease_SyscallBlock
-			byRetake
-		)
-		switch ev.Args[0] {
-		case byStopTheWorldWithSema:
-			arg = Arg{"stw"}
-		case byGCMarkDone:
-			arg = Arg{"gc mark done"}
-		case byGCMarkTermination:
-			arg = Arg{"gc mark termination"}
-		case byProcResize:
-			arg = Arg{"proc resize"}
-		case byRelease_AllocM:
-			arg = Arg{"release (alloc m)"}
-		case byRelease_StopLockedM:
-			arg = Arg{"release (stop locked m)"}
-		case byRelease_StartLockedM:
-			arg = Arg{"release (start locked m)"}
-		case byRelease_GCStopM:
-			arg = Arg{"release (gc stop m)"}
-		case byRelease_ExitM:
-			arg = Arg{"release (exit m)"}
-		case byRelease_FindRunnable:
-			arg = Arg{"release (find runnable)"}
-		case byRelease_SyscallBlock:
-			arg = Arg{"release (syscall block)"}
-		case byRetake:
-			arg = Arg{"retake"}
-		default:
-			arg = Arg{"unknown"}
-		}
 	}
 	ctx.emit(&traceviewer.Event{
 		Name:     name,
