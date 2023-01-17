@@ -589,7 +589,7 @@ func readGCStats_m(pauses *[]uint64) {
 	p[n+n+1] = uint64(memstats.numgc)
 	p[n+n+2] = memstats.pause_total_ns
 	unlock(&mheap_.lock)
-	*pauses = p[:n+n+4]
+	*pauses = p[:n+n+3]
 }
 
 // flushmcache flushes the mcache of allp[i].
