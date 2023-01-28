@@ -1149,7 +1149,7 @@ func mallocgc(size uintptr, typ *_type, needzero bool) unsafe.Pointer {
 			sTime := nanotime()
 			gcStart(t)
 			eTime := nanotime()
-			if eTime-sTime > 90000000 {
+			if eTime-sTime > 50000000 {
 				// infoStr := fmt.Sprintf("###>>>: gc trigger in mallocgc, gc time [%d]\n", eTime-sTime)
 				print("###>>>: gc trigger in mallocgc, time: ", (eTime-sTime)/1000000, "ms\n")
 				/*
