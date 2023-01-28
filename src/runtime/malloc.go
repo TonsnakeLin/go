@@ -101,7 +101,6 @@
 package runtime
 
 import (
-	"fmt"
 	"internal/goarch"
 	"internal/goos"
 	"runtime/internal/atomic"
@@ -1151,8 +1150,8 @@ func mallocgc(size uintptr, typ *_type, needzero bool) unsafe.Pointer {
 			gcStart(t)
 			eTime := nanotime()
 			if eTime-sTime > 1000000 {
-				infoStr := fmt.Sprintf("###>>>: gc trigger in mallocgc, gc time [%d]\n", eTime-sTime)
-				print(infoStr)
+				// infoStr := fmt.Sprintf("###>>>: gc trigger in mallocgc, gc time [%d]\n", eTime-sTime)
+				print("###>>>: gc trigger in mallocgc")
 				/*
 					if michaelLogFile == nil {
 						var err error
