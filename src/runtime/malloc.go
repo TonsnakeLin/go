@@ -101,11 +101,9 @@
 package runtime
 
 import (
-	"bufio"
 	"fmt"
 	"internal/goarch"
 	"internal/goos"
-	"os"
 	"runtime/internal/atomic"
 	"runtime/internal/math"
 	"runtime/internal/sys"
@@ -349,7 +347,7 @@ var physPageSize uintptr
 var (
 	physHugePageSize  uintptr
 	physHugePageShift uint
-	michaelLogFile    *os.File
+	// michaelLogFile    *os.File
 )
 
 func mallocinit() {
@@ -1155,17 +1153,19 @@ func mallocgc(size uintptr, typ *_type, needzero bool) unsafe.Pointer {
 			if eTime-sTime > 1000000 {
 				infoStr := fmt.Sprintf("###>>>: gc trigger in mallocgc, gc time [%d]\n", eTime-sTime)
 				print(infoStr)
-				if michaelLogFile == nil {
-					var err error
-					michaelLogFile, err = os.OpenFile("/tmp/michaelgc.log", os.O_WRONLY|os.O_CREATE, 0777)
-					if err != nil {
-						println("open file failed")
+				/*
+					if michaelLogFile == nil {
+						var err error
+						michaelLogFile, err = os.OpenFile("/tmp/michaelgc.log", os.O_WRONLY|os.O_CREATE, 0777)
+						if err != nil {
+							println("open file failed")
+						}
 					}
-				}
-				if michaelLogFile != nil {
-					write := bufio.NewWriter(michaelLogFile)
-					write.WriteString(infoStr)
-				}
+					if michaelLogFile != nil {
+						write := bufio.NewWriter(michaelLogFile)
+						write.WriteString(infoStr)
+					}
+				*/
 			}
 		}
 	}
