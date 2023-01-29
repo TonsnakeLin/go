@@ -841,6 +841,8 @@ func (c *mcache) nextFree(spc spanClass) (v gclinkptr, s *mspan, shouldhelpgc bo
 // Small objects are allocated from the per-P cache's free lists.
 // Large objects (> 32 kB) are allocated straight from the heap.
 func mallocgc(size uintptr, typ *_type, needzero bool) unsafe.Pointer {
+	startTime := nanotime()
+
 	if gcphase == _GCmarktermination {
 		throw("mallocgc called with gcphase == _GCmarktermination")
 	}
@@ -878,7 +880,12 @@ func mallocgc(size uintptr, typ *_type, needzero bool) unsafe.Pointer {
 					align = 1
 				}
 			}
-			return persistentalloc(size, align, &memstats.other_sys)
+			pAlloc := persistentalloc(size, align, &memstats.other_sys)
+			endTime := nanotime()
+			if endTime-startTime > 50000000 {
+				print("###>>>: stage1 in mallocgc, time: ", (endTime-startTime)/1000000, " ms\n")
+			}
+			return pAlloc
 		}
 
 		if inittrace.active && inittrace.id == getg().goid {
@@ -985,6 +992,12 @@ func mallocgc(size uintptr, typ *_type, needzero bool) unsafe.Pointer {
 				c.tinyAllocs++
 				mp.mallocing = 0
 				releasem(mp)
+
+				endTime := nanotime()
+				if endTime-startTime > 50000000 {
+					print("###>>>: stage2 in mallocgc, time: ", (endTime-startTime)/1000000, " ms\n")
+				}
+
 				return x
 			}
 			// Allocate a new maxTinySize block.
@@ -1150,21 +1163,7 @@ func mallocgc(size uintptr, typ *_type, needzero bool) unsafe.Pointer {
 			gcStart(t)
 			eTime := nanotime()
 			if eTime-sTime > 50000000 {
-				// infoStr := fmt.Sprintf("###>>>: gc trigger in mallocgc, gc time [%d]\n", eTime-sTime)
-				print("###>>>: gc trigger in mallocgc, time: ", (eTime-sTime)/1000000, "ms\n")
-				/*
-					if michaelLogFile == nil {
-						var err error
-						michaelLogFile, err = os.OpenFile("/tmp/michaelgc.log", os.O_WRONLY|os.O_CREATE, 0777)
-						if err != nil {
-							println("open file failed")
-						}
-					}
-					if michaelLogFile != nil {
-						write := bufio.NewWriter(michaelLogFile)
-						write.WriteString(infoStr)
-					}
-				*/
+				print("###>>>: gc trigger in mallocgc, time: ", (eTime-sTime)/1000000, " ms\n")
 			}
 		}
 	}
@@ -1184,6 +1183,12 @@ func mallocgc(size uintptr, typ *_type, needzero bool) unsafe.Pointer {
 		// Maybe just all noscan objects?
 		x = add(x, size-dataSize)
 	}
+
+	endTime := nanotime()
+	if endTime-startTime > 50000000 {
+		print("###>>>: stage3 in mallocgc, time: ", (endTime-startTime)/1000000, " ms\n")
+	}
+
 	return x
 }
 
